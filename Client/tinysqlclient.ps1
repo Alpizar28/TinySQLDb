@@ -1,8 +1,9 @@
 param (
-    [Parameter(Mandatory = $true)]
-    [string]$IP,
-    [Parameter(Mandatory = $true)]
-    [int]$Port
+    [Parameter(Mandatory = $false)]
+    [string]$IP = "127.0.0.1",  # Asignar IP por defecto
+    
+    [Parameter(Mandatory = $false)]
+    [int]$Port = 11000  # Asignar Puerto por defecto
 )
 
 $ipEndPoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Parse($IP), $Port)
@@ -33,12 +34,12 @@ function Receive-Message {
     $stream = New-Object System.Net.Sockets.NetworkStream($client)
     $reader = New-Object System.IO.StreamReader($stream)
     try {
-            $line = $reader.ReadLine()
-            if ($null -ne $line) {
-                return $line
-            } else {
-                return ""
-            }
+        $line = $reader.ReadLine()
+        if ($null -ne $line) {
+            return $line
+        } else {
+            return ""
+        }
     }
     finally {
         $reader.Close()
@@ -52,11 +53,11 @@ function Send-SQLCommand {
     )
     $client = New-Object System.Net.Sockets.Socket([System.Net.IPAddress]::Parse($IP).AddressFamily, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)
     $client.Connect($IP, $Port)
+    
     $requestObject = [PSCustomObject]@{
-        RequestType = 0;
+        RequestType = 0;  # SQLSentence
         RequestBody = $command
     }
-    Write-Host -ForegroundColor Green "Sending command: $command"
 
     $jsonMessage = ConvertTo-Json -InputObject $requestObject -Compress
     Send-Message -client $client -message $jsonMessage
@@ -70,47 +71,22 @@ function Send-SQLCommand {
     $client.Close()
 }
 
-function Execute-MyQuery {
-    param (
-        [string]$QueryFile,
-        [int]$Port,
-        [string]$IP
-    )
+# Bucle para continuar o salir
+do {
+    # Pedir la consulta SQL al usuario
+    $consulta = Read-Host "Ingresa tu consulta SQL o escribe 'salir' para terminar"
 
-    $queries = Get-Content $QueryFile -Raw -ErrorAction Stop | ForEach-Object { $_ -split ";" }
-
-    foreach ($query in $queries) {
-        if ($query -ne "") {
-            $query = $query.Trim()
-            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-            $client = New-Object System.Net.Sockets.TcpClient
-            $client.Connect($IP, $Port)
-
-            $stream = $client.GetStream()
-            $writer = New-Object System.IO.StreamWriter($stream)
-            $reader = New-Object System.IO.StreamReader($stream)
-
-            $writer.WriteLine($query)
-            $writer.Flush()
-
-            $response = $reader.ReadLine()
-
-            $stopwatch.Stop()
-            Write-Host "Consulta: $query"
-            Write-Host "Resultado: $response"
-            Write-Host "Tiempo: $($stopwatch.ElapsedMilliseconds) ms"
-
-            $writer.Close()
-            $reader.Close()
-            $client.Close()
-        }
+    # Si el usuario escribe 'salir', terminamos el bucle
+    if ($consulta -eq "salir") {
+        Write-Host "Sesión finalizada."
+        break
     }
-}
 
-Execute-MyQuery -QueryFile "C:\Users\Pablo\Downloads\TinySQLDb-main\TinySQLDb-main\script.tinysql" -Port 11000 -IP "127.0.0.1"
+    # Llamar a la función para ejecutar la consulta SQL
+    Send-SQLCommand -command $consulta
 
+    # Preguntar si el usuario quiere seguir
+    $continuar = Read-Host "¿Quieres realizar otra consulta? (sí/no)"
+} while ($continuar -eq "sí")
 
-# Llamada de prueba
-Send-SQLCommand -command "CREATE TABLE ESTUDIANTE"
-Send-SQLCommand -command "SELECT * FROM ESTUDIANTE"
+Write-Host "Sesión finalizada."

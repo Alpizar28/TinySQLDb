@@ -89,7 +89,6 @@ namespace ApiInterface
                 Request = request,  // Proporciona el objeto Request que acabas de crear
                 Status = OperationStatus.Error,  // Usa el valor del enum OperationStatus
                 ResponseBody = reason,  // Usa la razón del error como ResponseBody
-                Message = reason  // O también en Message si lo prefieres
             };
 
             using (NetworkStream stream = new NetworkStream(handler))

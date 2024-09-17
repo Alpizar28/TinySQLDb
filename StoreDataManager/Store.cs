@@ -8,12 +8,12 @@ namespace StoreDataManager
     {
         private static Store? instance = null;
         private static readonly object _lock = new object();
-               
+
         public static Store GetInstance()
         {
-            lock(_lock)
+            lock (_lock)
             {
-                if (instance == null) 
+                if (instance == null)
                 {
                     instance = new Store();
                 }
@@ -30,49 +30,91 @@ namespace StoreDataManager
         public Store()
         {
             this.InitializeSystemCatalog();
-            
         }
 
         private void InitializeSystemCatalog()
         {
-            // Always make sure that the system catalog and above folder
-            // exist when initializing
+            // Verificar que el sistema de archivos del catálogo esté creado
             Directory.CreateDirectory(SystemCatalogPath);
         }
 
-        public OperationStatus CreateTable()
+        // Crear base de datos con un nombre dinámico
+        public OperationStatus CreateDatabase(string databaseName)
         {
-            // Creates a default DB called TESTDB
-            Directory.CreateDirectory($@"{DataPath}\TESTDB");
-
-            // Creates a default Table called ESTUDIANTES
-            var tablePath = $@"{DataPath}\TESTDB\ESTUDIANTES.Table";
-
-            using (FileStream stream = File.Open(tablePath, FileMode.OpenOrCreate))
-            using (BinaryWriter writer = new (stream))
+            try
             {
-                // Create an object with a hardcoded.
-                // First field is an int, second field is a string of size 30,
-                // third is a string of 50
-                int id = 90;
-                string nombre = "Isaac".PadRight(30); // Pad to make the size of the string fixed
-                string apellido = "Ramirez".PadRight(50);
+                var databasePath = $@"{DataPath}\{databaseName}";
 
-                writer.Write(id);
-                writer.Write(nombre);
-                writer.Write(apellido);
+                if (Directory.Exists(databasePath))
+                {
+                    Console.WriteLine($"La base de datos '{databaseName}' ya existe.");
+                    return OperationStatus.Warning;
+                }
+
+                Directory.CreateDirectory(databasePath);
+                Console.WriteLine($"Base de datos '{databaseName}' creada exitosamente.");
+                return OperationStatus.Success;
             }
-            return OperationStatus.Success;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al crear la base de datos '{databaseName}': {ex.Message}");
+                return OperationStatus.Error;
+            }
         }
 
-        public OperationStatus Select()
+        // Crear tabla en una base de datos específica
+        public OperationStatus CreateTable(string databaseName, string tableName, string[] columnDefinitions)
         {
-            // Creates a default Table called ESTUDIANTES
-            var tablePath = $@"{DataPath}\TESTDB\ESTUDIANTES.Table";
-            using (FileStream stream = File.Open(tablePath, FileMode.OpenOrCreate))
-            using (BinaryReader reader = new (stream))
+            try
             {
-                // Print the values as a I know exactly the types, but this needs to be done right
+                // Definir la ruta de la tabla
+                var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+                // Verificar si la tabla ya existe
+                if (File.Exists(tablePath))
+                {
+                    Console.WriteLine($"La tabla '{tableName}' ya existe en la base de datos '{databaseName}'.");
+                    return OperationStatus.Warning; // Retorna advertencia si la tabla ya existe
+                }
+
+                // Crear la tabla y escribir las definiciones de las columnas
+                using (FileStream stream = File.Open(tablePath, FileMode.CreateNew))
+                using (BinaryWriter writer = new BinaryWriter(stream))
+                {
+                    // Escribir las definiciones de las columnas
+                    foreach (var column in columnDefinitions)
+                    {
+                        writer.Write(column);
+                    }
+                }
+
+                Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
+                return OperationStatus.Success;  // Retorna éxito si se creó correctamente
+            }
+            catch (Exception ex)
+            {
+                // Manejar cualquier error durante la creación
+                Console.WriteLine($"Error al crear la tabla '{tableName}' en la base de datos '{databaseName}': {ex.Message}");
+                return OperationStatus.Error;  // Retorna error en caso de excepción
+            }
+        }
+
+
+
+        // Seleccionar datos desde una tabla
+        public OperationStatus Select(string databaseName, string tableName)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+            if (!File.Exists(tablePath))
+            {
+                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                return OperationStatus.Error;
+            }
+
+            using (FileStream stream = File.Open(tablePath, FileMode.Open))
+            using (BinaryReader reader = new(stream))
+            {
                 Console.WriteLine(reader.ReadInt32());
                 Console.WriteLine(reader.ReadString());
                 Console.WriteLine(reader.ReadString());
