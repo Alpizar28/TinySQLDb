@@ -10,5 +10,7 @@ namespace ApiInterface.Models
         public required OperationStatus Status { get; set; }
 
         public required string ResponseBody { get; set; }
+
+        public string Message { get; set; }
     }
 }

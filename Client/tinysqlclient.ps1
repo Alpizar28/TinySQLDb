@@ -5,7 +5,7 @@ param (
     [int]$Port
 )
 
-$ipEndPoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Parse("127.0.0.1"), 11000)
+$ipEndPoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Parse($IP), $Port)
 
 function Send-Message {
     param (
@@ -45,12 +45,13 @@ function Receive-Message {
         $stream.Close()
     }
 }
+
 function Send-SQLCommand {
     param (
         [string]$command
     )
-    $client = New-Object System.Net.Sockets.Socket($ipEndPoint.AddressFamily, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)
-    $client.Connect($ipEndPoint)
+    $client = New-Object System.Net.Sockets.Socket([System.Net.IPAddress]::Parse($IP).AddressFamily, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)
+    $client.Connect($IP, $Port)
     $requestObject = [PSCustomObject]@{
         RequestType = 0;
         RequestBody = $command
@@ -69,6 +70,47 @@ function Send-SQLCommand {
     $client.Close()
 }
 
-# This is an example, should not be called here
+function Execute-MyQuery {
+    param (
+        [string]$QueryFile,
+        [int]$Port,
+        [string]$IP
+    )
+
+    $queries = Get-Content $QueryFile -Raw -ErrorAction Stop | ForEach-Object { $_ -split ";" }
+
+    foreach ($query in $queries) {
+        if ($query -ne "") {
+            $query = $query.Trim()
+            $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+            $client = New-Object System.Net.Sockets.TcpClient
+            $client.Connect($IP, $Port)
+
+            $stream = $client.GetStream()
+            $writer = New-Object System.IO.StreamWriter($stream)
+            $reader = New-Object System.IO.StreamReader($stream)
+
+            $writer.WriteLine($query)
+            $writer.Flush()
+
+            $response = $reader.ReadLine()
+
+            $stopwatch.Stop()
+            Write-Host "Consulta: $query"
+            Write-Host "Resultado: $response"
+            Write-Host "Tiempo: $($stopwatch.ElapsedMilliseconds) ms"
+
+            $writer.Close()
+            $reader.Close()
+            $client.Close()
+        }
+    }
+}
+
+Execute-MyQuery -QueryFile "C:\Users\Pablo\Downloads\TinySQLDb-main\TinySQLDb-main\script.tinysql" -Port 11000 -IP "127.0.0.1"
+
+
+# Llamada de prueba
 Send-SQLCommand -command "CREATE TABLE ESTUDIANTE"
-Send-SQlCommand -command "SELECT * FROM ESTUDIANTE"
+Send-SQLCommand -command "SELECT * FROM ESTUDIANTE"

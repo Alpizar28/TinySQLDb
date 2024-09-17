@@ -6,8 +6,8 @@ using System.Text.Json;
 using ApiInterface.Exceptions;
 using ApiInterface.Processors;
 using ApiInterface.Models;
+using Entities;
 
-//
 
 namespace ApiInterface
 {
@@ -74,11 +74,30 @@ namespace ApiInterface
             }
         }
 
-        private static Task SendErrorResponse(string reason, Socket handler)
+        private static async Task SendErrorResponse(string reason, Socket handler)
         {
-            throw new NotImplementedException();
-        }
+            // Crear una instancia de Request, usando el enum RequestType.SQLSentence y un RequestBody adecuado
+            var request = new Request
+            {
+                RequestType = RequestType.SQLSentence,  // Establece el tipo de solicitud
+                RequestBody = "Error handling request"  // Puedes ajustar esto según el contexto
+            };
 
-        
+            // Crear la respuesta usando la solicitud que acabamos de crear
+            var response = new Response
+            {
+                Request = request,  // Proporciona el objeto Request que acabas de crear
+                Status = OperationStatus.Error,  // Usa el valor del enum OperationStatus
+                ResponseBody = reason,  // Usa la razón del error como ResponseBody
+                Message = reason  // O también en Message si lo prefieres
+            };
+
+            using (NetworkStream stream = new NetworkStream(handler))
+            using (StreamWriter writer = new StreamWriter(stream))
+            {
+                await writer.WriteLineAsync(JsonSerializer.Serialize(response));
+            }
+        }
+ 
     }
 }
