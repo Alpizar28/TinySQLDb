@@ -73,20 +73,16 @@ function Send-SQLCommand {
 
 # Bucle para continuar o salir
 do {
-    # Pedir la consulta SQL al usuario
     $consulta = Read-Host "Ingresa tu consulta SQL o escribe 'salir' para terminar"
 
-    # Si el usuario escribe 'salir', terminamos el bucle
     if ($consulta -eq "salir") {
         Write-Host "Sesión finalizada."
         break
     }
 
-    # Llamar a la función para ejecutar la consulta SQL
     Send-SQLCommand -command $consulta
 
-    # Preguntar si el usuario quiere seguir
-    $continuar = Read-Host "¿Quieres realizar otra consulta? (sí/no)"
-} while ($continuar -eq "sí")
+} while ($consulta -ne "salir")
 
 Write-Host "Sesión finalizada."
+

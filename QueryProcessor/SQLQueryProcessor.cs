@@ -11,7 +11,6 @@ namespace QueryProcessor
         {
             var parts = sentence.Split(' ');
 
-            // Verificar si la consulta es CREATE DATABASE
             if (sentence.StartsWith("CREATE DATABASE", StringComparison.OrdinalIgnoreCase))
             {
                 if (parts.Length == 3)
@@ -45,8 +44,6 @@ namespace QueryProcessor
             }
 
 
-
-
             // Verificar si la consulta es SELECT
             if (sentence.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
             {
@@ -63,7 +60,6 @@ namespace QueryProcessor
                 }
             }
 
-            // Si no se reconoce el comando, lanzar una excepción
             throw new UnknownSQLSentenceException();
         }
     }
