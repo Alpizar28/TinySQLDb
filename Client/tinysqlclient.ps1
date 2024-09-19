@@ -1,9 +1,8 @@
 param (
     [Parameter(Mandatory = $false)]
-    [string]$IP = "127.0.0.1",  # Asignar IP por defecto
-    
+    [string]$IP = "127.0.0.1",  # IP por defecto
     [Parameter(Mandatory = $false)]
-    [int]$Port = 11000  # Asignar Puerto por defecto
+    [int]$Port = 11000  # Puerto por defecto
 )
 
 $ipEndPoint = [System.Net.IPEndPoint]::new([System.Net.IPAddress]::Parse($IP), $Port)
@@ -53,7 +52,7 @@ function Send-SQLCommand {
     )
     $client = New-Object System.Net.Sockets.Socket([System.Net.IPAddress]::Parse($IP).AddressFamily, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)
     $client.Connect($IP, $Port)
-    
+
     $requestObject = [PSCustomObject]@{
         RequestType = 0;  # SQLSentence
         RequestBody = $command
@@ -65,33 +64,58 @@ function Send-SQLCommand {
 
     Write-Host -ForegroundColor Green "Response received: $response"
     
-    $responseObject = ConvertFrom-Json -InputObject $response
-    Write-Output $responseObject
+    if ($responseObject.ResponseBody -and $responseObject.ResponseBody -ne "") {
+        # Convertir el JSON a un objeto de PowerShell
+        $jsonObject = $responseObject.ResponseBody | ConvertFrom-Json
+
+        # Mostrar los resultados en formato de tabla
+        $jsonObject | Format-Table -AutoSize
+    } else {
+        Write-Host "No se encontraron registros o la consulta no produjo resultados." -ForegroundColor Yellow
+    }
+
+
     $client.Shutdown([System.Net.Sockets.SocketShutdown]::Both)
     $client.Close()
 }
 
-# Función: Execute-MyQuery para ejecutar todas las consultas en el archivo
 function Execute-MyQuery {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$QueryFile,  # Archivo con las sentencias SQL
-
-        [Parameter(Mandatory = $true)]
-        [int]$Port,  # Puerto en el que escucha el servidor
-        
-        [Parameter(Mandatory = $true)]
-        [string]$IP  # Dirección IP del servidor
+        [string]$QueryFile  # Archivo con las sentencias SQL
     )
 
     # Lee el contenido del archivo de consultas
     $queries = Get-Content -Path $QueryFile
 
+    $combinedQuery = ""
+    $insideCreateTable = $false
+
     foreach ($query in $queries) {
         if (-not [string]::IsNullOrWhiteSpace($query)) {
-            # Ejecuta la consulta una por una
-            Write-Host "Ejecutando consulta: $query" -ForegroundColor Yellow
-            Send-SQLCommand -command $query
+            # Detecta si empieza una sentencia CREATE TABLE
+            if ($query.Trim().StartsWith("CREATE TABLE", [StringComparison]::OrdinalIgnoreCase)) {
+                $insideCreateTable = $true
+            }
+
+            if ($insideCreateTable) {
+                $combinedQuery += $query + " "
+
+                # Detecta si termina la sentencia CREATE TABLE
+                if ($query.Trim().EndsWith(");")) {
+                    # Ejecuta toda la sentencia CREATE TABLE como una sola
+                    Write-Host "Ejecutando consulta: $combinedQuery" -ForegroundColor Yellow
+                    Send-SQLCommand -command $combinedQuery
+                    $combinedQuery = ""
+                    $insideCreateTable = $false
+                }
+            } else {
+                # Ejecuta las consultas normales (que no son CREATE TABLE)
+                Write-Host "Ejecutando consulta: $query" -ForegroundColor Yellow
+                Send-SQLCommand -command $query
+            }
         }
     }
 }
+
+# Ejecutar el archivo que contiene las sentencias SQL
+Execute-MyQuery -QueryFile "C:\ruta\al\archivo\script.tinysql"

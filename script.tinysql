@@ -1,2 +1,1 @@
-CREATE DATABASE Universidad;
-CREATE TABLE Estudiante ID INTEGER
+SELECT * FROM Universidad Estudiante

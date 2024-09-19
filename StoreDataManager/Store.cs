@@ -38,7 +38,13 @@ namespace StoreDataManager
             Directory.CreateDirectory(SystemCatalogPath);
         }
 
-        // Crear base de datos con un nombre dinámico
+        // Nuevo método para verificar si una base de datos ya existe
+        public bool DatabaseExists(string databaseName)
+        {
+            var databasePath = $@"{DataPath}\{databaseName}";
+            return Directory.Exists(databasePath);
+        }
+
         public OperationStatus CreateDatabase(string databaseName)
         {
             try
@@ -66,10 +72,8 @@ namespace StoreDataManager
         {
             try
             {
-                // Definir la ruta de la tabla
                 var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
 
-                // Verificar si la tabla ya existe
                 if (File.Exists(tablePath))
                 {
                     Console.WriteLine($"La tabla '{tableName}' ya existe en la base de datos '{databaseName}'.");
@@ -86,13 +90,13 @@ namespace StoreDataManager
                     // Escribir las definiciones de las columnas (nombre y tipo de dato)
                     foreach (var column in columnDefinitions)
                     {
-                        writer.Write(column.ColumnName);
-                        writer.Write(column.DataType);
+                        writer.Write(column.ColumnName);  // Escribir el nombre de la columna
+                        writer.Write(column.DataType);    // Escribir el tipo de dato de la columna
                     }
                 }
 
                 Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
-                return OperationStatus.Success;  // Retorna éxito si se creó correctamente
+                return OperationStatus.Success;  // Retorna éxito si la tabla se crea correctamente
             }
             catch (Exception ex)
             {
@@ -101,44 +105,6 @@ namespace StoreDataManager
             }
         }
 
-        // Nuevo método para verificar si una tabla está vacía
-        public bool IsTableEmpty(string databaseName, string tableName)
-        {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
-
-            if (!File.Exists(tablePath))
-            {
-                throw new Exception($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
-            }
-
-            using (FileStream stream = File.Open(tablePath, FileMode.Open))
-            using (BinaryReader reader = new BinaryReader(stream))
-            {
-                // Leer la cantidad de columnas
-                int columnCount = reader.ReadInt32();
-
-                // Si no hay más filas, la tabla está vacía
-                return stream.Length == stream.Position;
-            }
-        }
-
-        // Nuevo método para eliminar la tabla
-        public OperationStatus DropTable(string databaseName, string tableName)
-        {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
-
-            if (File.Exists(tablePath))
-            {
-                File.Delete(tablePath);
-                Console.WriteLine($"Tabla '{tableName}' eliminada exitosamente de la base de datos '{databaseName}'.");
-                return OperationStatus.Success;
-            }
-            else
-            {
-                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
-                return OperationStatus.Error;
-            }
-        }
 
         public OperationStatus InsertRow(string databaseName, string tableName, string[] rowValues)
         {
@@ -217,5 +183,125 @@ namespace StoreDataManager
                 return OperationStatus.Error;
             }
         }
+
+        public List<Dictionary<string, string>> SelectColumns(string databaseName, string tableName, string[] selectedColumns)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+            if (!File.Exists(tablePath))
+            {
+                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                return null;
+            }
+
+            try
+            {
+                var results = new List<Dictionary<string, string>>();
+
+                using (FileStream stream = File.OpenRead(tablePath))
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    // Leer la cantidad de columnas
+                    int columnCount = reader.ReadInt32();
+                    var columns = new List<(string ColumnName, string DataType)>();
+
+                    // Leer las definiciones de las columnas
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        string columnName = reader.ReadString();
+                        string dataType = reader.ReadString();
+                        columns.Add((columnName, dataType));
+                    }
+
+                    // Filtrar las columnas solicitadas por el usuario
+                    var columnFilter = columns.Where(c => selectedColumns.Contains(c.ColumnName)).ToList();
+
+                    if (!columnFilter.Any())
+                    {
+                        Console.WriteLine("Las columnas solicitadas no existen en la tabla.");
+                        return null;
+                    }
+
+                    // Leer las filas y seleccionar las columnas solicitadas
+                    while (stream.Position < stream.Length)
+                    {
+                        var row = new Dictionary<string, string>();
+
+                        foreach (var column in columnFilter)
+                        {
+                            string value = reader.ReadString();
+                            row[column.ColumnName] = value;
+                        }
+
+                        results.Add(row);
+                    }
+                }
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al leer la tabla '{tableName}': {ex.Message}");
+                return null;
+            }
+        }
+
+        public List<Dictionary<string, string>> SelectAll(string databaseName, string tableName)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+            if (!File.Exists(tablePath))
+            {
+                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                return null;
+            }
+
+            try
+            {
+                var results = new List<Dictionary<string, string>>();
+
+                using (FileStream stream = File.OpenRead(tablePath))
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    // Leer la cantidad de columnas
+                    int columnCount = reader.ReadInt32();
+                    var columns = new List<(string ColumnName, string DataType)>();
+
+                    // Leer las definiciones de las columnas
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        string columnName = reader.ReadString();
+                        string dataType = reader.ReadString();
+                        columns.Add((columnName, dataType));
+                    }
+
+                    // Leer las filas
+                    while (stream.Position < stream.Length)
+                    {
+                        var row = new Dictionary<string, string>();
+
+                        foreach (var column in columns)
+                        {
+                            string value = reader.ReadString();
+                            row[column.ColumnName] = value;
+                        }
+
+                        results.Add(row);
+                    }
+                }
+
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al leer la tabla '{tableName}': {ex.Message}");
+                return null;
+            }
+        }
+
+
+
+
+
     }
 }
