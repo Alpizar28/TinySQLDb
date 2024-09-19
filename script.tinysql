@@ -1,9 +1,2 @@
 CREATE DATABASE Universidad;
-SET DATABASE Universidad;
-CREATE TABLE Estudiante (
-    ID INTEGER,
-    Nombre VARCHAR(30),
-    PrimerApellido VARCHAR(30),
-    SegundoApellido VARCHAR(30),
-    FechaNacimiento DATETIME
-);
+CREATE TABLE Estudiante ID INTEGER

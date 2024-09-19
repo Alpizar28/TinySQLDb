@@ -71,18 +71,27 @@ function Send-SQLCommand {
     $client.Close()
 }
 
-# Bucle para continuar o salir
-do {
-    $consulta = Read-Host "Ingresa tu consulta SQL o escribe 'salir' para terminar"
+# Función: Execute-MyQuery para ejecutar todas las consultas en el archivo
+function Execute-MyQuery {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$QueryFile,  # Archivo con las sentencias SQL
 
-    if ($consulta -eq "salir") {
-        Write-Host "Sesión finalizada."
-        break
+        [Parameter(Mandatory = $true)]
+        [int]$Port,  # Puerto en el que escucha el servidor
+        
+        [Parameter(Mandatory = $true)]
+        [string]$IP  # Dirección IP del servidor
+    )
+
+    # Lee el contenido del archivo de consultas
+    $queries = Get-Content -Path $QueryFile
+
+    foreach ($query in $queries) {
+        if (-not [string]::IsNullOrWhiteSpace($query)) {
+            # Ejecuta la consulta una por una
+            Write-Host "Ejecutando consulta: $query" -ForegroundColor Yellow
+            Send-SQLCommand -command $query
+        }
     }
-
-    Send-SQLCommand -command $consulta
-
-} while ($consulta -ne "salir")
-
-Write-Host "Sesión finalizada."
-
+}
