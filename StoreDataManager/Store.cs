@@ -79,7 +79,7 @@ namespace StoreDataManager
                 // Crear la tabla y escribir las definiciones de las columnas
                 using (FileStream stream = File.Open(tablePath, FileMode.CreateNew))
                 using (BinaryWriter writer = new BinaryWriter(stream))
-                {  
+                {
                     // Escribir la cantidad de columnas
                     writer.Write(columnDefinitions.Length);
 
@@ -98,6 +98,45 @@ namespace StoreDataManager
             {
                 Console.WriteLine($"Error al crear la tabla '{tableName}' en la base de datos '{databaseName}': {ex.Message}");
                 return OperationStatus.Error;  // Retorna error en caso de excepción
+            }
+        }
+
+        // Nuevo método para verificar si una tabla está vacía
+        public bool IsTableEmpty(string databaseName, string tableName)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+            if (!File.Exists(tablePath))
+            {
+                throw new Exception($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+            }
+
+            using (FileStream stream = File.Open(tablePath, FileMode.Open))
+            using (BinaryReader reader = new BinaryReader(stream))
+            {
+                // Leer la cantidad de columnas
+                int columnCount = reader.ReadInt32();
+
+                // Si no hay más filas, la tabla está vacía
+                return stream.Length == stream.Position;
+            }
+        }
+
+        // Nuevo método para eliminar la tabla
+        public OperationStatus DropTable(string databaseName, string tableName)
+        {
+            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+
+            if (File.Exists(tablePath))
+            {
+                File.Delete(tablePath);
+                Console.WriteLine($"Tabla '{tableName}' eliminada exitosamente de la base de datos '{databaseName}'.");
+                return OperationStatus.Success;
+            }
+            else
+            {
+                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                return OperationStatus.Error;
             }
         }
 
@@ -178,6 +217,5 @@ namespace StoreDataManager
                 return OperationStatus.Error;
             }
         }
-
     }
 }

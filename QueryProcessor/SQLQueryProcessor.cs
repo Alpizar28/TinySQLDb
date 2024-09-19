@@ -6,6 +6,7 @@ using Entities;
 using QueryProcessor.Exceptions;
 using QueryProcessor.Operations;
 using StoreDataManager;
+using System;
 
 namespace QueryProcessor
 {
@@ -67,24 +68,20 @@ namespace QueryProcessor
                     }
                 }
 
-                if (trimmedQuery.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+
+            // Verificar si la consulta es SELECT
+            if (sentence.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+            {
+                if (parts.Length >= 5)
                 {
-                    if (parts.Length >= 5)
-                    {
-                        var databaseName = parts[3];
-                        var tableName = parts[4];
-                        var status = Store.GetInstance().Select(databaseName, tableName);
-                        if (status != OperationStatus.Success)
-                        {
-                            Console.WriteLine("Error al realizar SELECT.");
-                            return OperationStatus.Error;
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Sintaxis incorrecta para SELECT.");
-                        return OperationStatus.Error;
-                    }
+                    var databaseName = parts[3];
+                    var tableName = parts[4];
+                    return Store.GetInstance().Select(databaseName, tableName);
+                }
+                else
+                {
+                    Console.WriteLine("Sintaxis incorrecta para SELECT.");
+                    return OperationStatus.Error;
                 }
             }
 
