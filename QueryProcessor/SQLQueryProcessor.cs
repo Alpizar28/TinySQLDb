@@ -18,7 +18,9 @@ namespace QueryProcessor
                 { "CREATE TABLE", new CreateTable() },
                 { "INSERT INTO", new Insert() },
                 { "SELECT", new Select() },
-                { "USE", new UseDatabase() }
+                { "USE", new UseDatabase() },
+                { "DROP TABLE", new DropTable() }
+
             };
         }
 
