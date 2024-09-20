@@ -63,5 +63,16 @@ namespace StoreDataManager
         {
             return _dataOperations.SelectAll(databaseName, tableName);
         }
+
+        public bool IsTableEmpty(string databaseName, string tableName)
+        {
+            return _tableManager.IsTableEmpty(databaseName, tableName);
+        }
+
+        // Nuevo método para eliminar una tabla
+        public OperationStatus DropTable(string databaseName, string tableName)
+        {
+            return _tableManager.DropTable(databaseName, tableName);
+        }
     }
 }

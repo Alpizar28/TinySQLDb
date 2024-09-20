@@ -7,7 +7,16 @@ CREATE TABLE Empleados (
     Posicion VARCHAR(30),
     FechaIngreso DATETIME
 );
+CREATE TABLE Limpieza (
+    ID INTEGER,
+    Nombre VARCHAR(30),
+    Apellido VARCHAR(30),
+    Posicion VARCHAR(30),
+    FechaIngreso DATETIME
+);
 INSERT INTO Empleados VALUES (1, 'Carlos', 'Sanchez', 'Gerente', '2010-05-20');
 INSERT INTO Empleados VALUES (2, 'Maria', 'Lopez', 'Asistente', '2015-07-15');
 INSERT INTO Empleados VALUES (3, 'Luis', 'Gomez', 'Ingeniero', '2012-09-01');
 SELECT * FROM Empleados;
+SELECT * FROM Limpieza;
+DROP TABLE Empresa.Limpieza;

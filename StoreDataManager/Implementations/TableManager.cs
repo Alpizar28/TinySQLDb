@@ -71,5 +71,51 @@ namespace StoreDataManager.Implementations
                 return null;
             }
         }
+
+        // Nuevo método para verificar si una tabla está vacía
+        public bool IsTableEmpty(string databaseName, string tableName)
+        {
+            try
+            {
+                var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
+
+                if (!File.Exists(tablePath))
+                {
+                    return true; // Si no existe, lo consideramos vacío
+                }
+
+                using (FileStream stream = File.OpenRead(tablePath))
+                {
+                    return stream.Length <= 128; // Supongamos que las definiciones de columnas no ocupan más de 128 bytes
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        // Nuevo método para eliminar una tabla
+        public OperationStatus DropTable(string databaseName, string tableName)
+        {
+            try
+            {
+                var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
+
+                if (File.Exists(tablePath))
+                {
+                    File.Delete(tablePath);
+                    return OperationStatus.Success;
+                }
+                else
+                {
+                    return OperationStatus.Error; // No existe la tabla
+                }
+            }
+            catch
+            {
+                return OperationStatus.Error;
+            }
+        }
     }
 }
