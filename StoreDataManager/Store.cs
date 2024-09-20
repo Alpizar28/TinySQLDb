@@ -1,5 +1,4 @@
 ﻿using Entities;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 
 namespace StoreDataManager
@@ -21,27 +20,17 @@ namespace StoreDataManager
             }
         }
 
-        private const string DatabaseBasePath = @"C:\TinySql\";
-        private const string DataPath = $@"{DatabaseBasePath}\Data";
-        private const string SystemCatalogPath = $@"{DataPath}\SystemCatalog";
-        private const string SystemDatabasesFile = $@"{SystemCatalogPath}\SystemDatabases.table";
-        private const string SystemTablesFile = $@"{SystemCatalogPath}\SystemTables.table";
+        private const string DatabaseBasePath = @"C:\TinySql\Data\";
 
         public Store()
         {
-            this.InitializeSystemCatalog();
+            // Inicializar directorio base de datos
+            Directory.CreateDirectory(DatabaseBasePath);
         }
 
-        private void InitializeSystemCatalog()
-        {
-            // Verificar que el sistema de archivos del catálogo esté creado
-            Directory.CreateDirectory(SystemCatalogPath);
-        }
-
-        // Nuevo método para verificar si una base de datos ya existe
         public bool DatabaseExists(string databaseName)
         {
-            var databasePath = $@"{DataPath}\{databaseName}";
+            var databasePath = Path.Combine(DatabaseBasePath, databaseName);
             return Directory.Exists(databasePath);
         }
 
@@ -49,7 +38,7 @@ namespace StoreDataManager
         {
             try
             {
-                var databasePath = $@"{DataPath}\{databaseName}";
+                var databasePath = Path.Combine(DatabaseBasePath, databaseName);
 
                 if (Directory.Exists(databasePath))
                 {
@@ -72,7 +61,7 @@ namespace StoreDataManager
         {
             try
             {
-                var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+                var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
 
                 if (File.Exists(tablePath))
                 {
@@ -90,25 +79,24 @@ namespace StoreDataManager
                     // Escribir las definiciones de las columnas (nombre y tipo de dato)
                     foreach (var column in columnDefinitions)
                     {
-                        writer.Write(column.ColumnName);  // Escribir el nombre de la columna
-                        writer.Write(column.DataType);    // Escribir el tipo de dato de la columna
+                        writer.Write(column.ColumnName);  // Nombre de la columna
+                        writer.Write(column.DataType);    // Tipo de dato
                     }
                 }
 
                 Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
-                return OperationStatus.Success;  // Retorna éxito si la tabla se crea correctamente
+                return OperationStatus.Success;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error al crear la tabla '{tableName}' en la base de datos '{databaseName}': {ex.Message}");
-                return OperationStatus.Error;  // Retorna error en caso de excepción
+                return OperationStatus.Error;
             }
         }
 
-
-        public OperationStatus InsertRow(string databaseName, string tableName, string[] rowValues)
+        public OperationStatus InsertRow(string databaseName, string tableName, string[] columns, string[] rowValues)
         {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+            var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
 
             if (!File.Exists(tablePath))
             {
@@ -121,6 +109,9 @@ namespace StoreDataManager
                 using (FileStream stream = new FileStream(tablePath, FileMode.Append))
                 using (BinaryWriter writer = new BinaryWriter(stream))
                 {
+                    // Escribir una marca para indicar el inicio de una nueva fila (opcional)
+                    writer.Write((byte)1);  // Por ejemplo, 1 indica una nueva fila
+
                     // Escribir los valores de la fila
                     foreach (var value in rowValues)
                     {
@@ -138,117 +129,10 @@ namespace StoreDataManager
             }
         }
 
-        public OperationStatus Select(string databaseName, string tableName)
-        {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
-
-            if (!File.Exists(tablePath))
-            {
-                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
-                return OperationStatus.Error;
-            }
-
-            try
-            {
-                using (FileStream stream = File.Open(tablePath, FileMode.Open))
-                using (BinaryReader reader = new BinaryReader(stream))
-                {
-                    // Leer la cantidad de columnas
-                    int columnCount = reader.ReadInt32();
-                    var columnDefinitions = new (string ColumnName, string DataType)[columnCount];
-
-                    // Leer las definiciones de las columnas
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        columnDefinitions[i] = (reader.ReadString(), reader.ReadString());
-                    }
-
-                    // Leer las filas
-                    while (stream.Position < stream.Length)
-                    {
-                        for (int i = 0; i < columnCount; i++)
-                        {
-                            var value = reader.ReadString();
-                            Console.Write($"{columnDefinitions[i].ColumnName}: {value} ");
-                        }
-                        Console.WriteLine();
-                    }
-
-                    return OperationStatus.Success;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al leer de la tabla '{tableName}': {ex.Message}");
-                return OperationStatus.Error;
-            }
-        }
-
-        public List<Dictionary<string, string>> SelectColumns(string databaseName, string tableName, string[] selectedColumns)
-        {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
-
-            if (!File.Exists(tablePath))
-            {
-                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
-                return null;
-            }
-
-            try
-            {
-                var results = new List<Dictionary<string, string>>();
-
-                using (FileStream stream = File.OpenRead(tablePath))
-                using (BinaryReader reader = new BinaryReader(stream))
-                {
-                    // Leer la cantidad de columnas
-                    int columnCount = reader.ReadInt32();
-                    var columns = new List<(string ColumnName, string DataType)>();
-
-                    // Leer las definiciones de las columnas
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        string columnName = reader.ReadString();
-                        string dataType = reader.ReadString();
-                        columns.Add((columnName, dataType));
-                    }
-
-                    // Filtrar las columnas solicitadas por el usuario
-                    var columnFilter = columns.Where(c => selectedColumns.Contains(c.ColumnName)).ToList();
-
-                    if (!columnFilter.Any())
-                    {
-                        Console.WriteLine("Las columnas solicitadas no existen en la tabla.");
-                        return null;
-                    }
-
-                    // Leer las filas y seleccionar las columnas solicitadas
-                    while (stream.Position < stream.Length)
-                    {
-                        var row = new Dictionary<string, string>();
-
-                        foreach (var column in columnFilter)
-                        {
-                            string value = reader.ReadString();
-                            row[column.ColumnName] = value;
-                        }
-
-                        results.Add(row);
-                    }
-                }
-
-                return results;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al leer la tabla '{tableName}': {ex.Message}");
-                return null;
-            }
-        }
 
         public List<Dictionary<string, string>> SelectAll(string databaseName, string tableName)
         {
-            var tablePath = $@"{DataPath}\{databaseName}\{tableName}.Table";
+            var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
 
             if (!File.Exists(tablePath))
             {
@@ -278,6 +162,14 @@ namespace StoreDataManager
                     // Leer las filas
                     while (stream.Position < stream.Length)
                     {
+                        // Leer la marca de inicio de fila (opcional)
+                        byte rowMarker = reader.ReadByte();
+                        if (rowMarker != 1)
+                        {
+                            Console.WriteLine("Formato de fila incorrecto.");
+                            return null;
+                        }
+
                         var row = new Dictionary<string, string>();
 
                         foreach (var column in columns)
@@ -299,9 +191,41 @@ namespace StoreDataManager
             }
         }
 
+        public (string ColumnName, string DataType)[] GetTableDefinition(string databaseName, string tableName)
+        {
+            var tablePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
 
+            if (!File.Exists(tablePath))
+            {
+                Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                return null;
+            }
 
+            try
+            {
+                using (FileStream stream = File.OpenRead(tablePath))
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    // Leer la cantidad de columnas
+                    int columnCount = reader.ReadInt32();
+                    var columnDefinitions = new (string ColumnName, string DataType)[columnCount];
 
+                    // Leer las definiciones de las columnas
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        string columnName = reader.ReadString();
+                        string dataType = reader.ReadString();
+                        columnDefinitions[i] = (columnName, dataType);
+                    }
 
+                    return columnDefinitions;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al leer la definición de la tabla '{tableName}': {ex.Message}");
+                return null;
+            }
+        }
     }
 }

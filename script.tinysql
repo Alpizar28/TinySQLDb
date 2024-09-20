@@ -1,1 +1,15 @@
-SELECT * FROM Universidad Estudiante
+CREATE DATABASE Empresa;
+
+CREATE TABLE Empresa.Empleados (
+    ID INTEGER,
+    Nombre VARCHAR(30),
+    Apellido VARCHAR(30),
+    Posicion VARCHAR(30),
+    FechaIngreso DATETIME
+);
+
+INSERT INTO Empresa.Empleados VALUES (1, 'Carlos', 'Sanchez', 'Gerente', '2010-05-20');
+INSERT INTO Empresa.Empleados VALUES (2, 'Maria', 'Lopez', 'Asistente', '2015-07-15');
+INSERT INTO Empresa.Empleados VALUES (3, 'Luis', 'Gomez', 'Ingeniero', '2012-09-01');
+
+SELECT * FROM Empresa.Empleados;

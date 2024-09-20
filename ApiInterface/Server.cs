@@ -1,13 +1,11 @@
 ﻿using System.Net.Sockets;
 using System.Net;
-using System.Text;
-using ApiInterface.InternalModels;
 using System.Text.Json;
 using ApiInterface.Exceptions;
-using ApiInterface.Processors;
 using ApiInterface.Models;
+using ApiInterface.Processors;
+using ApiInterface.InternalModels;
 using Entities;
-
 
 namespace ApiInterface
 {
@@ -21,7 +19,7 @@ namespace ApiInterface
             using Socket listener = new(serverEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             listener.Bind(serverEndPoint);
             listener.Listen(supportedParallelConnections);
-            Console.WriteLine($"Server ready at {serverEndPoint.ToString()}");
+            Console.WriteLine($"Server ready at {serverEndPoint}");
 
             while (true)
             {
@@ -76,19 +74,17 @@ namespace ApiInterface
 
         private static async Task SendErrorResponse(string reason, Socket handler)
         {
-            // Crear una instancia de Request, usando el enum RequestType.SQLSentence y un RequestBody adecuado
             var request = new Request
             {
-                RequestType = RequestType.SQLSentence,  // Establece el tipo de solicitud
-                RequestBody = "Error handling request"  // Puedes ajustar esto según el contexto
+                RequestType = RequestType.SQLSentence,
+                RequestBody = "Error handling request"
             };
 
-            // Crear la respuesta usando la solicitud que acabamos de crear
             var response = new Response
             {
-                Request = request,  // Proporciona el objeto Request que acabas de crear
-                Status = OperationStatus.Error,  // Usa el valor del enum OperationStatus
-                ResponseBody = reason,  // Usa la razón del error como ResponseBody
+                Request = request,
+                Status = OperationStatus.Error,
+                ResponseBody = reason,
             };
 
             using (NetworkStream stream = new NetworkStream(handler))
@@ -97,6 +93,5 @@ namespace ApiInterface
                 await writer.WriteLineAsync(JsonSerializer.Serialize(response));
             }
         }
- 
     }
 }
