@@ -76,7 +76,7 @@ namespace QueryProcessor.Operations
                     }
                     else
                     {
-                        Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
+                        Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.\n");
                         return OperationStatus.Success;
                     }
                 }

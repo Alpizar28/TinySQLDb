@@ -17,7 +17,8 @@ namespace QueryProcessor
                 { "CREATE DATABASE", new CreateDatabase() },
                 { "CREATE TABLE", new CreateTable() },
                 { "INSERT INTO", new Insert() },
-                { "SELECT", new Select() }
+                { "SELECT", new Select() },
+                { "USE", new UseDatabase() }
             };
         }
 
@@ -34,34 +35,19 @@ namespace QueryProcessor
 
                 trimmedQuery = trimmedQuery.TrimEnd(';');
 
-                if (trimmedQuery.StartsWith("USE", StringComparison.OrdinalIgnoreCase))
-                {
-                    var parts = trimmedQuery.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length == 2)
-                    {
-                        currentDatabaseName = parts[1];
-                        Console.WriteLine($"Base de datos actual establecida a '{currentDatabaseName}'.");
-                        continue;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Sintaxis incorrecta para USE.");
-                        return OperationStatus.Error;
-                    }
-                }
-
                 var operationKey = GetOperationKey(trimmedQuery);
-                if (operations.ContainsKey(operationKey))
+                if (!string.IsNullOrEmpty(operationKey) && operations.ContainsKey(operationKey))
                 {
                     var status = operations[operationKey].Execute(trimmedQuery, ref currentDatabaseName);
                     if (status != OperationStatus.Success)
                     {
+                        Console.WriteLine($"Error al ejecutar la operación: {trimmedQuery}");
                         return status;
                     }
                 }
                 else
                 {
-                    Console.WriteLine($"Comando no reconocido: {trimmedQuery}");
+                    Console.WriteLine($"Comando no reconocido o sintaxis incorrecta: {trimmedQuery}");
                     return OperationStatus.Error;
                 }
             }
