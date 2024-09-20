@@ -82,6 +82,7 @@ namespace QueryProcessor.Operations
                 Console.WriteLine("Sintaxis incorrecta para INSERT INTO.");
                 return OperationStatus.Error;
             }
+            return OperationStatus.Success; ///quitar por aquello
         }
 
         private bool ValidateDataTypes((string ColumnName, string DataType)[] columnDefinitions, string[] values)
