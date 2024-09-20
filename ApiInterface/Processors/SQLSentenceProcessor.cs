@@ -5,14 +5,20 @@ using QueryProcessor;
 
 namespace ApiInterface.Processors
 {
-    internal class SQLSentenceProcessor(Request request) : IProcessor 
+    internal class SQLSentenceProcessor : IProcessor
     {
-        public Request Request { get; } = request;
+        public Request Request { get; }
+
+        public SQLSentenceProcessor(Request request)
+        {
+            this.Request = request;
+        }
 
         public Response Process()
         {
             var sentence = this.Request.RequestBody;
-            var result = SQLQueryProcessor.Execute(sentence);
+            var processor = new SQLQueryProcessor();
+            var result = processor.Execute(sentence);
             var response = this.ConvertToResponse(result);
             return response;
         }

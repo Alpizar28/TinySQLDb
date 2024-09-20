@@ -1,48 +1,96 @@
-﻿using Entities;
+﻿using System;
+using System.Linq;
 using StoreDataManager;
+using Entities;
 
 namespace QueryProcessor.Operations
 {
-    public class CreateTable
+    public class CreateTable : ISqlOperation
     {
-        public OperationStatus Execute(string databaseName, string tableName, (string ColumnName, string DataType)[] columnDefinitions)
+        public OperationStatus Execute(string query, ref string currentDatabaseName)
         {
-            try
+            int startIndex = query.IndexOf('(');
+            int endIndex = query.LastIndexOf(')');
+
+            if (startIndex > -1 && endIndex > startIndex)
             {
-                // Lógica para crear la tabla
-                var tablePath = $@"C:\TinySql\Data\{databaseName}\{tableName}.Table";
+                var tableDefinition = query.Substring(0, startIndex).Trim();
+                var columnsDefinition = query.Substring(startIndex + 1, endIndex - startIndex - 1).Trim();
 
-                // Verificar si la tabla ya existe
-                if (File.Exists(tablePath))
+                var tableParts = tableDefinition.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (tableParts.Length >= 3)
                 {
-                    Console.WriteLine($"La tabla '{tableName}' ya existe en la base de datos '{databaseName}'.");
-                    return OperationStatus.Warning;
-                }
+                    string databaseName = null;
+                    string tableName = null;
 
-                // Crear la tabla y escribir las definiciones de las columnas
-                using (FileStream stream = File.Open(tablePath, FileMode.CreateNew))
-                using (BinaryWriter writer = new BinaryWriter(stream))
-                {
-                    // Escribir la cantidad de columnas
-                    writer.Write(columnDefinitions.Length);
-
-                    // Escribir las definiciones de las columnas (nombre y tipo de dato)
-                    foreach (var column in columnDefinitions)
+                    var fullTableName = tableParts[2];
+                    if (fullTableName.Contains('.'))
                     {
-                        writer.Write(column.ColumnName);  // Escribir el nombre de la columna
-                        writer.Write(column.DataType);    // Escribir el tipo de dato de la columna
+                        var nameParts = fullTableName.Split('.');
+                        databaseName = nameParts[0];
+                        tableName = nameParts[1];
+                    }
+                    else
+                    {
+                        tableName = fullTableName;
+                        if (!string.IsNullOrEmpty(currentDatabaseName))
+                        {
+                            databaseName = currentDatabaseName;
+                        }
+                        else
+                        {
+                            Console.WriteLine("Error: No se especificó la base de datos y no hay una base de datos actual establecida.");
+                            return OperationStatus.Error;
+                        }
+                    }
+
+                    columnsDefinition = columnsDefinition.Replace("\n", " ").Replace("\r", " ").Trim();
+
+                    // Separa las columnas solo por comas
+                    var columns = columnsDefinition.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    var columnDefinitions = columns.Select(col =>
+                    {
+                        var cleanCol = col.Trim();
+
+                        var firstSpaceIndex = cleanCol.IndexOf(' ');
+                        if (firstSpaceIndex > 0)
+                        {
+                            var columnName = cleanCol.Substring(0, firstSpaceIndex).Trim();
+                            var dataType = cleanCol.Substring(firstSpaceIndex).Trim();
+
+                            return (ColumnName: columnName, DataType: dataType);
+                        }
+                        else
+                        {
+                            throw new Exception($"Definición de columna inválida: {col}");
+                        }
+                    }).ToArray();
+
+                    var status = Store.GetInstance().CreateTable(databaseName, tableName, columnDefinitions);
+                    if (status != OperationStatus.Success)
+                    {
+                        Console.WriteLine("Error al crear la tabla.");
+                        return OperationStatus.Error;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
+                        return OperationStatus.Success;
                     }
                 }
-
-                Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.");
-                return OperationStatus.Success;  // Retorna éxito si se creó correctamente
+                else
+                {
+                    Console.WriteLine("Sintaxis incorrecta para CREATE TABLE.");
+                    return OperationStatus.Error;
+                }
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"Error al crear la tabla '{tableName}' en la base de datos '{databaseName}': {ex.Message}");
-                return OperationStatus.Error;  // Retorna error en caso de excepción
+                Console.WriteLine("Sintaxis incorrecta para CREATE TABLE.");
+                return OperationStatus.Error;
             }
         }
     }
-
 }
