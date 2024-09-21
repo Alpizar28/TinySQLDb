@@ -15,4 +15,4 @@ INSERT INTO Empleados VALUES (3, 'Luis', 'Gomez', 'Ingeniero', '2012-09-01');
 
 CREATE INDEX idx_apellido ON Empleados(Apellido) OF TYPE BTREE;
 
-SELECT * FROM Empleados;
+SELECT * FROM Empleados WHERE ID>2;

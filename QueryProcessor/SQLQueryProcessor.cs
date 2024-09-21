@@ -19,7 +19,8 @@ namespace QueryProcessor
                 { "INSERT INTO", new Insert() },
                 { "SELECT", new Select() },
                 { "DROP TABLE", new DropTable() },
-                { "CREATE INDEX", new CreateIndex() }  // Agregamos CreateIndex al diccionario
+                { "CREATE INDEX", new CreateIndex() },  
+                { "USE", new UseDatabase() }  
 
             };
         }
