@@ -10,5 +10,8 @@ namespace StoreDataManager.Interfaces
         // Nuevas definiciones
         bool IsTableEmpty(string databaseName, string tableName);
         OperationStatus DropTable(string databaseName, string tableName);
+
+        // Método para crear un índice
+        OperationStatus CreateIndex(string databaseName, string tableName, string columnName, string indexName, string indexType);
     }
 }

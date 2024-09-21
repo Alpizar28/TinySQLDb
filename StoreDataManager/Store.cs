@@ -74,5 +74,30 @@ namespace StoreDataManager
         {
             return _tableManager.DropTable(databaseName, tableName);
         }
+        public OperationStatus RegisterIndex(string databaseName, string tableName, string columnName, string indexName, string indexType)
+        {
+            try
+            {
+                // Definir la ruta del archivo de índices
+                string systemCatalogPath = Path.Combine(@"C:\TinySql\Data\SystemCatalog");
+                string indexFilePath = Path.Combine(systemCatalogPath, "indices.txt");
+
+                // Asegurarse de que el directorio existe
+                Directory.CreateDirectory(systemCatalogPath);
+
+                // Registrar el índice en el archivo de índices
+                string indexInfo = $"{databaseName}|{tableName}|{columnName}|{indexName}|{indexType}";
+                File.AppendAllText(indexFilePath, indexInfo + Environment.NewLine);
+
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al registrar el índice: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+
     }
 }

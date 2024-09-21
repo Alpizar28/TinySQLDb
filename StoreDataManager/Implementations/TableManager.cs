@@ -117,5 +117,80 @@ namespace StoreDataManager.Implementations
                 return OperationStatus.Error;
             }
         }
+
+        public OperationStatus CreateIndex(string databaseName, string tableName, string columnName, string indexName, string indexType)
+        {
+            try
+            {
+                // Verificar que el tipo de índice es válido
+                if (indexType != "BTREE" && indexType != "BST")
+                {
+                    return OperationStatus.Error;
+                }
+
+                // Verificar que la tabla y la columna existen
+                var columnDefinitions = GetTableDefinition(databaseName, tableName);
+                if (columnDefinitions == null)
+                {
+                    Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                    return OperationStatus.Error;
+                }
+
+                bool columnExists = false;
+                foreach (var column in columnDefinitions)
+                {
+                    if (column.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        columnExists = true;
+                        break;
+                    }
+                }
+
+                if (!columnExists)
+                {
+                    Console.WriteLine($"La columna '{columnName}' no existe en la tabla '{tableName}'.");
+                    return OperationStatus.Error;
+                }
+
+                // Verificar que no haya valores repetidos en la columna
+                var dataOperations = new DataOperations(); // Asegúrate de tener una instancia de IDataOperations
+                var rows = dataOperations.SelectAll(databaseName, tableName);
+
+                var uniqueValues = new HashSet<string>();
+                foreach (var row in rows)
+                {
+                    if (!uniqueValues.Add(row[columnName]))
+                    {
+                        Console.WriteLine($"No se puede crear el índice. La columna '{columnName}' tiene valores repetidos.");
+                        return OperationStatus.Error;
+                    }
+                }
+
+                // Crear el índice en memoria (simulado)
+                // Aquí puedes implementar la estructura real del índice según el tipo (BTREE o BST)
+
+                // Registrar el índice en el System Catalog
+                RegisterIndex(databaseName, tableName, columnName, indexName, indexType);
+
+                Console.WriteLine($"Índice '{indexName}' creado exitosamente en la tabla '{tableName}'.");
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al crear el índice: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+        private void RegisterIndex(string databaseName, string tableName, string columnName, string indexName, string indexType)
+        {
+            // Implementar el registro del índice en el System Catalog
+            string systemCatalogPath = Path.Combine(DatabaseBasePath, "SystemCatalog");
+            Directory.CreateDirectory(systemCatalogPath);
+            string indicesFilePath = Path.Combine(systemCatalogPath, "indices.txt");
+
+            string indexInfo = $"{databaseName}|{tableName}|{columnName}|{indexName}|{indexType}";
+            File.AppendAllText(indicesFilePath, indexInfo + Environment.NewLine);
+        }
     }
 }
