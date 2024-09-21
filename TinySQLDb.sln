@@ -18,6 +18,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "Entities\Entiti
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementos de la solución", "Elementos de la solución", "{F627B3F3-B2B2-46B6-B3D7-2B7BD3CB3ABA}"
 	ProjectSection(SolutionItems) = preProject
+		ReadSystemCatalog.cs = ReadSystemCatalog.cs
 		script.tinysql = script.tinysql
 	EndProjectSection
 EndProject
