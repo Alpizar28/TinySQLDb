@@ -68,6 +68,7 @@ namespace QueryProcessor.Operations
                         }
                     }).ToArray();
 
+                    // **Crear la tabla**
                     var status = Store.GetInstance().CreateTable(databaseName, tableName, columnDefinitions);
                     if (status != OperationStatus.Success)
                     {
@@ -76,6 +77,12 @@ namespace QueryProcessor.Operations
                     }
                     else
                     {
+                        // **Registrar la tabla en el System Catalog**
+                        Store.GetInstance().RegisterTable(databaseName, tableName);
+
+                        // **Registrar las columnas en el System Catalog**
+                        Store.GetInstance().RegisterColumns(databaseName, tableName, columnDefinitions);
+
                         Console.WriteLine($"Tabla '{tableName}' creada exitosamente en la base de datos '{databaseName}'.\n");
                         return OperationStatus.Success;
                     }

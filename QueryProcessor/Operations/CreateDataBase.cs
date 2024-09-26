@@ -22,6 +22,7 @@ namespace QueryProcessor.Operations
                 var status = Store.GetInstance().CreateDatabase(databaseName);
                 if (status != OperationStatus.Success)
                 {
+                    Store.GetInstance().RegisterDatabase(databaseName);
                     Console.WriteLine("Error al crear la base de datos.");
                     return OperationStatus.Error;
                 }
