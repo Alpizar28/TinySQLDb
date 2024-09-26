@@ -10,34 +10,66 @@ namespace QueryProcessor.Operations
     {
         public OperationStatus Execute(string query, ref string currentDatabaseName)
         {
+            // Check if the current database is selected
             if (string.IsNullOrEmpty(currentDatabaseName))
             {
                 Console.WriteLine("No hay una base de datos seleccionada. Use USE <database_name> para seleccionar una.");
                 return OperationStatus.Error;
             }
 
-            // Eliminar punto y coma al final si existe
-            query = query.Trim().TrimEnd(';');
+            // Remove the semicolon at the end of the query if it exists
+            query = query.Trim();
+            query = query.TrimEnd(';');
 
-            // Separar la cláusula SELECT del resto
-            var selectIndex = query.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
-            var fromIndex = query.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
+            // Find the index of SELECT and FROM in the query
+            int selectIndex = query.IndexOf("SELECT", StringComparison.OrdinalIgnoreCase);
+            int fromIndex = query.IndexOf("FROM", StringComparison.OrdinalIgnoreCase);
 
+            // Check if both SELECT and FROM exist in the query
             if (selectIndex == -1 || fromIndex == -1)
             {
                 Console.WriteLine("Sintaxis incorrecta. Falta SELECT o FROM.");
                 return OperationStatus.Error;
             }
 
-            var selectClause = query.Substring(selectIndex + 6, fromIndex - (selectIndex + 6)).Trim();
-            var remainingQuery = query.Substring(fromIndex + 4).Trim();
+            // Extract the SELECT clause
+            string selectClause = query.Substring(selectIndex + 6, fromIndex - (selectIndex + 6));
+            selectClause = selectClause.Trim();
 
-            // Procesar la cláusula FROM y posibles cláusulas WHERE
+            // Extract the remaining part of the query after the FROM clause
+            string remainingQuery = query.Substring(fromIndex + 4).Trim();
+
+            // Initialize variables for table name, WHERE clause, and ORDER BY clause
             string tableName = null;
             string whereClause = null;
+            string orderByClause = null;
+            bool orderDescending = false;
 
-            var whereIndex = remainingQuery.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+            // Look for WHERE and ORDER BY clauses
+            int whereIndex = remainingQuery.IndexOf("WHERE", StringComparison.OrdinalIgnoreCase);
+            int orderByIndex = remainingQuery.IndexOf("ORDER BY", StringComparison.OrdinalIgnoreCase);
 
+            if (orderByIndex != -1)
+            {
+                // Extract the ORDER BY clause
+                orderByClause = remainingQuery.Substring(orderByIndex + 8).Trim();
+
+                // Adjust the remaining query by removing the ORDER BY clause
+                remainingQuery = remainingQuery.Substring(0, orderByIndex).Trim();
+
+                // Check if the ORDER BY clause specifies DESC or ASC
+                if (orderByClause.EndsWith("DESC", StringComparison.OrdinalIgnoreCase))
+                {
+                    orderByClause = orderByClause.Substring(0, orderByClause.Length - 4).Trim();
+                    orderDescending = true;
+                }
+                else if (orderByClause.EndsWith("ASC", StringComparison.OrdinalIgnoreCase))
+                {
+                    orderByClause = orderByClause.Substring(0, orderByClause.Length - 3).Trim();
+                }
+            }
+
+            // Extract the WHERE clause if it exists
             if (whereIndex != -1)
             {
                 tableName = remainingQuery.Substring(0, whereIndex).Trim();
@@ -48,17 +80,17 @@ namespace QueryProcessor.Operations
                 tableName = remainingQuery.Trim();
             }
 
-            // Determinar la base de datos y el nombre de la tabla
+            // Determine the database and table name
             string databaseName = currentDatabaseName;
 
             if (tableName.Contains('.'))
             {
-                var nameParts = tableName.Split('.');
+                string[] nameParts = tableName.Split('.');
                 databaseName = nameParts[0];
                 tableName = nameParts[1];
             }
 
-            // Obtener la definición de la tabla
+            // Get the table definition
             var tableDefinition = Store.GetInstance().GetTableDefinition(databaseName, tableName);
             if (tableDefinition == null)
             {
@@ -66,7 +98,7 @@ namespace QueryProcessor.Operations
                 return OperationStatus.Error;
             }
 
-            // Obtener los datos de la tabla
+            // Get all the data from the table
             var rows = Store.GetInstance().SelectAll(databaseName, tableName);
             if (rows == null)
             {
@@ -74,7 +106,7 @@ namespace QueryProcessor.Operations
                 return OperationStatus.Error;
             }
 
-            // Filtrar las filas si hay cláusula WHERE
+            // Filter the rows based on the WHERE clause if it exists
             if (!string.IsNullOrEmpty(whereClause))
             {
                 rows = ApplyWhereClause(rows, whereClause, tableDefinition);
@@ -84,22 +116,31 @@ namespace QueryProcessor.Operations
                 }
             }
 
-            // Seleccionar las columnas especificadas
-            List<string> selectedColumns;
+            // Process the SELECT clause (select specific columns or all)
+            List<string> selectedColumns = new List<string>();
             if (selectClause.Trim() == "*")
             {
-                selectedColumns = tableDefinition.Select(c => c.ColumnName).ToList();
+                // Select all columns
+                foreach (var column in tableDefinition)
+                {
+                    selectedColumns.Add(column.ColumnName);
+                }
             }
             else
             {
-                selectedColumns = selectClause.Split(',')
-                                              .Select(c => c.Trim())
-                                              .ToList();
+                // Select specific columns
+                string[] columnsArray = selectClause.Split(',');
+                foreach (string column in columnsArray)
+                {
+                    string trimmedColumn = column.Trim();
+                    selectedColumns.Add(trimmedColumn);
+                }
 
-                // Verificar que las columnas existan en la tabla
+                // Verify that the columns exist in the table definition
                 foreach (var column in selectedColumns)
                 {
-                    if (!tableDefinition.Any(c => c.ColumnName.Equals(column, StringComparison.OrdinalIgnoreCase)))
+                    bool columnExists = tableDefinition.Any(c => c.ColumnName.Equals(column, StringComparison.OrdinalIgnoreCase));
+                    if (!columnExists)
                     {
                         Console.WriteLine($"La columna '{column}' no existe en la tabla '{tableName}'.");
                         return OperationStatus.Error;
@@ -107,7 +148,13 @@ namespace QueryProcessor.Operations
                 }
             }
 
-            // Mostrar los resultados
+            // Sort the rows if ORDER BY is specified
+            if (!string.IsNullOrEmpty(orderByClause))
+            {
+                rows = Quicksort(rows, orderByClause, orderDescending);
+            }
+
+            // Display the results
             DisplayResults(selectedColumns, rows);
 
             return OperationStatus.Success;
@@ -115,8 +162,8 @@ namespace QueryProcessor.Operations
 
         private List<Dictionary<string, string>> ApplyWhereClause(List<Dictionary<string, string>> rows, string whereClause, (string ColumnName, string DataType)[] tableDefinition)
         {
-            // Parsear la cláusula WHERE
-            var operators = new[] { ">=", "<=", "<>", "!=", "=", ">", "<", "LIKE", "NOT" };
+            // List of supported operators
+            string[] operators = { ">=", "<=", "<>", "!=", "=", ">", "<", "LIKE", "NOT" };
             string selectedOperator = operators.FirstOrDefault(op => whereClause.IndexOf(op, StringComparison.OrdinalIgnoreCase) != -1);
 
             if (string.IsNullOrEmpty(selectedOperator))
@@ -125,17 +172,18 @@ namespace QueryProcessor.Operations
                 return null;
             }
 
-            var parts = whereClause.Split(new[] { selectedOperator }, StringSplitOptions.None);
+            // Split the WHERE clause into column name and value
+            string[] parts = whereClause.Split(new[] { selectedOperator }, StringSplitOptions.None);
             if (parts.Length != 2)
             {
                 Console.WriteLine("Sintaxis incorrecta en la cláusula WHERE.");
                 return null;
             }
 
-            var columnName = parts[0].Trim();
-            var value = parts[1].Trim().Trim('\'');
+            string columnName = parts[0].Trim();
+            string value = parts[1].Trim().Trim('\'');
 
-            // Obtener el tipo de dato de la columna
+            // Get the column definition from the table
             var columnDefinition = tableDefinition.FirstOrDefault(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
             if (columnDefinition.ColumnName == null)
             {
@@ -143,64 +191,53 @@ namespace QueryProcessor.Operations
                 return null;
             }
 
-            // Filtrar las filas según la condición
-            var filteredRows = rows.Where(row =>
+            // Filter rows based on the condition in the WHERE clause
+            List<Dictionary<string, string>> filteredRows = new List<Dictionary<string, string>>();
+            foreach (var row in rows)
             {
                 if (!row.ContainsKey(columnName))
                 {
                     Console.WriteLine($"La columna '{columnName}' no existe en los datos.");
-                    return false;
+                    return null;
                 }
 
-                var cellValue = row[columnName];
+                string cellValue = row[columnName];
+                bool comparisonResult = CompareValues(cellValue, value, columnDefinition.DataType, selectedOperator);
 
-                switch (selectedOperator.ToUpper())
+                if (comparisonResult)
                 {
-                    case "=":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a == b);
-                    case "!=":
-                    case "<>":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a != b);
-                    case ">":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a > b);
-                    case "<":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a < b);
-                    case ">=":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a >= b);
-                    case "<=":
-                        return CompareValues(cellValue, value, columnDefinition.DataType, (a, b) => a <= b);
-                    case "LIKE":
-                        return cellValue.Contains(value);
-                    case "NOT":
-                        return !cellValue.Contains(value);
-                    default:
-                        Console.WriteLine($"Operador '{selectedOperator}' no soportado.");
-                        return false;
+                    filteredRows.Add(row);
                 }
-            }).ToList();
+            }
 
             return filteredRows;
         }
 
-        private bool CompareValues(string cellValue, string value, string dataType, Func<dynamic, dynamic, bool> comparison)
+        private bool CompareValues(string cellValue, string value, string dataType, string selectedOperator)
         {
+            // Conversion and comparison based on data type
             try
             {
-                switch (dataType.ToUpper())
+                if (dataType.ToUpper() == "INTEGER")
                 {
-                    case "INTEGER":
-                        int intCellValue = int.Parse(cellValue);
-                        int intValue = int.Parse(value);
-                        return comparison(intCellValue, intValue);
-                    case "DATETIME":
-                        DateTime dateCellValue = DateTime.Parse(cellValue);
-                        DateTime dateValue = DateTime.Parse(value);
-                        return comparison(dateCellValue, dateValue);
-                    case string s when s.StartsWith("VARCHAR"):
-                        return comparison(cellValue, value);
-                    default:
-                        Console.WriteLine($"Tipo de dato '{dataType}' no soportado para comparación.");
-                        return false;
+                    int intCellValue = int.Parse(cellValue);
+                    int intValue = int.Parse(value);
+                    return EvaluateComparison(intCellValue, intValue, selectedOperator);
+                }
+                else if (dataType.ToUpper() == "DATETIME")
+                {
+                    DateTime dateCellValue = DateTime.Parse(cellValue);
+                    DateTime dateValue = DateTime.Parse(value);
+                    return EvaluateComparison(dateCellValue, dateValue, selectedOperator);
+                }
+                else if (dataType.ToUpper().StartsWith("VARCHAR"))
+                {
+                    return EvaluateComparison(cellValue, value, selectedOperator);
+                }
+                else
+                {
+                    Console.WriteLine($"Tipo de dato '{dataType}' no soportado para comparación.");
+                    return false;
                 }
             }
             catch
@@ -210,20 +247,120 @@ namespace QueryProcessor.Operations
             }
         }
 
-        private void DisplayResults(List<string> columns, List<Dictionary<string, string>> rows)
+        private bool EvaluateComparison<T>(T cellValue, T value, string selectedOperator) where T : IComparable
         {
-            // Mostrar los nombres de las columnas
-            Console.WriteLine(string.Join("\t", columns));
-
-            // Mostrar separador
-            Console.WriteLine(new string('-', columns.Sum(c => c.Length + 8)));
-
-            // Mostrar las filas
-            foreach (var row in rows)
+            // Handle all possible comparison operators
+            switch (selectedOperator)
             {
-                var values = columns.Select(col => row.ContainsKey(col) ? row[col] : "").ToArray();
-                Console.WriteLine(string.Join("\t", values));
+                case "=":
+                    return cellValue.CompareTo(value) == 0;
+                case "!=":
+                case "<>":
+                    return cellValue.CompareTo(value) != 0;
+                case ">":
+                    return cellValue.CompareTo(value) > 0;
+                case "<":
+                    return cellValue.CompareTo(value) < 0;
+                case ">=":
+                    return cellValue.CompareTo(value) >= 0;
+                case "<=":
+                    return cellValue.CompareTo(value) <= 0;
+                default:
+                    Console.WriteLine($"Operador '{selectedOperator}' no soportado.");
+                    return false;
             }
         }
+
+        private List<Dictionary<string, string>> Quicksort(List<Dictionary<string, string>> rows, string column, bool descending)
+        {
+            // Base case: if there is 1 or fewer rows, no sorting is needed
+            if (rows.Count <= 1)
+            {
+                return rows;
+            }
+
+            // Select the pivot (middle element)
+            var pivot = rows[rows.Count / 2][column];
+
+            // Partition the rows into three groups: less than, equal to, and greater than the pivot
+            var less = new List<Dictionary<string, string>>();
+            var greater = new List<Dictionary<string, string>>();
+            var equal = new List<Dictionary<string, string>>();
+
+            foreach (var row in rows)
+            {
+                var cellValue = row[column];
+
+                if (string.Compare(cellValue, pivot) < 0)
+                {
+                    less.Add(row); // Values less than the pivot
+                }
+                else if (string.Compare(cellValue, pivot) > 0)
+                {
+                    greater.Add(row); // Values greater than the pivot
+                }
+                else
+                {
+                    equal.Add(row); // Values equal to the pivot
+                }
+            }
+
+            // Recursively sort the less and greater lists
+            var sortedLess = Quicksort(less, column, descending);
+            var sortedGreater = Quicksort(greater, column, descending);
+
+            // Combine the sorted lists
+            var result = new List<Dictionary<string, string>>();
+
+            if (descending)
+            {
+                result.AddRange(sortedGreater);
+                result.AddRange(equal);
+                result.AddRange(sortedLess);
+            }
+            else
+            {
+                result.AddRange(sortedLess);
+                result.AddRange(equal);
+                result.AddRange(sortedGreater);
+            }
+
+            return result;
+        }
+
+        private void DisplayResults(List<string> columns, List<Dictionary<string, string>> rows)
+        {
+            // Definir anchos fijos para las columnas para una alineación correcta
+            int columnWidth = 15;
+
+            // Mostrar los nombres de las columnas con un ancho fijo
+            foreach (var column in columns)
+            {
+                Console.Write($"{column.PadRight(columnWidth)}\t");
+            }
+            Console.WriteLine();
+
+            // Mostrar un separador
+            Console.WriteLine(new string('-', columns.Count * (columnWidth + 4)));
+
+            // Mostrar los valores de cada fila
+            foreach (var row in rows)
+            {
+                foreach (var column in columns)
+                {
+                    if (row.ContainsKey(column))
+                    {
+                        Console.Write($"{row[column].PadRight(columnWidth)}\t");
+                    }
+                    else
+                    {
+                        Console.Write(new string(' ', columnWidth) + "\t"); // Asegura que la columna vacía tenga el mismo ancho
+                    }
+                }
+                Console.WriteLine();
+            }
+        }
+
+
     }
 }

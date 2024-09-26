@@ -2,6 +2,7 @@
 using StoreDataManager.Implementations;
 using Entities;
 using System.Collections.Generic;
+using System.IO;
 
 namespace StoreDataManager
 {
@@ -69,35 +70,45 @@ namespace StoreDataManager
             return _tableManager.IsTableEmpty(databaseName, tableName);
         }
 
-        // Nuevo método para eliminar una tabla
         public OperationStatus DropTable(string databaseName, string tableName)
         {
             return _tableManager.DropTable(databaseName, tableName);
         }
+
+        // Nuevo método para registrar un índice
         public OperationStatus RegisterIndex(string databaseName, string tableName, string columnName, string indexName, string indexType)
         {
-            try
-            {
-                // Definir la ruta del archivo de índices
-                string systemCatalogPath = Path.Combine(@"C:\TinySql\Data\SystemCatalog");
-                string indexFilePath = Path.Combine(systemCatalogPath, "indices.txt");
-
-                // Asegurarse de que el directorio existe
-                Directory.CreateDirectory(systemCatalogPath);
-
-                // Registrar el índice en el archivo de índices
-                string indexInfo = $"{databaseName}|{tableName}|{columnName}|{indexName}|{indexType}";
-                File.AppendAllText(indexFilePath, indexInfo + Environment.NewLine);
-
-                return OperationStatus.Success;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al registrar el índice: {ex.Message}");
-                return OperationStatus.Error;
-            }
+            return _tableManager.CreateIndex(databaseName, tableName, columnName, indexName, indexType);
         }
 
+        // Llamada a la búsqueda utilizando índice
+        public List<Dictionary<string, string>> SearchUsingIndex(string databaseName, string tableName, string columnName, string searchValue)
+        {
+            return _tableManager.SearchUsingIndex(databaseName, tableName, columnName, searchValue);
+        }
 
+        // Llamada a la búsqueda secuencial
+        public List<Dictionary<string, string>> SearchSequentially(string databaseName, string tableName, string columnName, string searchValue)
+        {
+            return _tableManager.SearchSequentially(databaseName, tableName, columnName, searchValue);
+        }
+
+        // Obtener información del índice
+        public string GetIndexInfo(string databaseName, string tableName, string columnName)
+        {
+            return _tableManager.GetIndexInfo(databaseName, tableName, columnName);
+        }
+
+        // Eliminar filas específicas
+        public OperationStatus DeleteRows(string databaseName, string tableName, string columnName, string value)
+        {
+            return _tableManager.DeleteRows(databaseName, tableName, columnName, value);
+        }
+
+        // Eliminar todas las filas
+        public OperationStatus DeleteAllRows(string databaseName, string tableName)
+        {
+            return _tableManager.DeleteAllRows(databaseName, tableName);
+        }
     }
 }

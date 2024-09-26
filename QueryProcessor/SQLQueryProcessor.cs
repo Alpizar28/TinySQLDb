@@ -20,7 +20,8 @@ namespace QueryProcessor
                 { "SELECT", new Select() },
                 { "DROP TABLE", new DropTable() },
                 { "CREATE INDEX", new CreateIndex() },  
-                { "USE", new UseDatabase() }  
+                { "USE", new UseDatabase() },
+                { "DELETE", new Delete() }
 
             };
         }
