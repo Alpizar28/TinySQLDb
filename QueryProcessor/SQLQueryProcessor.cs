@@ -21,7 +21,8 @@ namespace QueryProcessor
                 { "DROP TABLE", new DropTable() },
                 { "CREATE INDEX", new CreateIndex() },  
                 { "USE", new UseDatabase() },
-                { "DELETE", new Delete() }
+                { "DELETE", new Delete() },
+                { "UPDATE", new Update() }
 
             };
         }

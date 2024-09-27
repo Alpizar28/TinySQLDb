@@ -1,4 +1,5 @@
 CREATE DATABASE Empresa;
+
 USE Empresa;
 
 CREATE TABLE Empleados (
@@ -15,6 +16,12 @@ INSERT INTO Empleados VALUES (3, 'Luis', 'Gomez', 'Ingeniero', '2012-09-01');
 
 SELECT * FROM Empleados;
 
-DELETE FROM Empleados WHERE FechaIngreso = 2010-05-21;
+DELETE FROM Empleados WHERE FechaIngreso = '2010-05-20';
+
+SELECT * FROM Empleados;
+
+UPDATE Empleados
+SET Posicion = 'Gerente'
+WHERE Nombre = 'Maria' AND Apellido = 'Lopez';
 
 SELECT * FROM Empleados;
