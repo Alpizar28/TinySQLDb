@@ -282,6 +282,9 @@ namespace StoreDataManager.Implementations
                     continue;
                 }
 
+                // Imprimir los valores para verificar que se están comparando correctamente
+                Console.WriteLine($"Comparando: Nombre = {row["Nombre"].Trim()}, Apellido = {row["Apellido"].Trim()}");
+
                 // Buscar el valor en la columna insensible a mayúsculas
                 string cellValue = row.FirstOrDefault(kvp => kvp.Key.Equals(normalizedColumnName, StringComparison.OrdinalIgnoreCase)).Value.Trim();
                 bool isMatch = false;
@@ -297,7 +300,7 @@ namespace StoreDataManager.Implementations
                 }
                 else
                 {
-                    // Comparar cadenas ignorando mayúsculas
+                    // Comparar cadenas ignorando mayúsculas y espacios
                     isMatch = cellValue.Equals(searchValue.Trim(), StringComparison.OrdinalIgnoreCase);
                 }
 
@@ -314,6 +317,7 @@ namespace StoreDataManager.Implementations
 
             return matchedRows;
         }
+
 
 
 
@@ -522,7 +526,116 @@ namespace StoreDataManager.Implementations
                 return null;
             }
         }
+        public OperationStatus UpdateAllRows(string databaseName, string tableName, string columnName, string newValue)
+        {
+            try
+            {
+                string tableFilePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
 
+                if (!File.Exists(tableFilePath))
+                {
+                    Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                    return OperationStatus.Error;
+                }
+
+                // Leer todas las filas de la tabla
+                var rows = File.ReadAllLines(tableFilePath);
+                var columnIndex = GetColumnIndex(databaseName, tableName, columnName);
+
+                if (columnIndex == -1)
+                {
+                    Console.WriteLine($"La columna '{columnName}' no existe en la tabla '{tableName}'.");
+                    return OperationStatus.Error;
+                }
+
+                // Actualizar cada fila
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    var rowValues = rows[i].Split('|');
+                    rowValues[columnIndex] = newValue; // Actualiza el valor en la columna
+                    rows[i] = string.Join("|", rowValues); // Reconstruye la fila
+                }
+
+                // Escribir las filas actualizadas en el archivo
+                File.WriteAllLines(tableFilePath, rows);
+                Console.WriteLine($"Todas las filas de la tabla '{tableName}' fueron actualizadas correctamente.");
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al actualizar las filas: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+        public OperationStatus UpdateRows(string databaseName, string tableName, string columnToUpdate, string newValue, string conditionColumn, string conditionValue)
+        {
+            try
+            {
+                string tableFilePath = Path.Combine(DatabaseBasePath, databaseName, $"{tableName}.table");
+
+                if (!File.Exists(tableFilePath))
+                {
+                    Console.WriteLine($"La tabla '{tableName}' no existe en la base de datos '{databaseName}'.");
+                    return OperationStatus.Error;
+                }
+
+                // Leer todas las filas de la tabla
+                var rows = File.ReadAllLines(tableFilePath);
+                var columnIndexToUpdate = GetColumnIndex(databaseName, tableName, columnToUpdate);
+                var conditionColumnIndex = GetColumnIndex(databaseName, tableName, conditionColumn);
+
+                if (columnIndexToUpdate == -1 || conditionColumnIndex == -1)
+                {
+                    Console.WriteLine("Columna no encontrada.");
+                    return OperationStatus.Error;
+                }
+
+                // Actualizar solo las filas que cumplen la condición
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    var rowValues = rows[i].Split('|');
+                    if (rowValues[conditionColumnIndex].Equals(conditionValue, StringComparison.OrdinalIgnoreCase))
+                    {
+                        rowValues[columnIndexToUpdate] = newValue; // Actualiza el valor en la columna
+                        rows[i] = string.Join("|", rowValues); // Reconstruye la fila
+                    }
+                }
+
+                // Escribir las filas actualizadas en el archivo
+                File.WriteAllLines(tableFilePath, rows);
+                Console.WriteLine($"Filas actualizadas en la tabla '{tableName}' que cumplen con la condición.");
+                return OperationStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al actualizar las filas: {ex.Message}");
+                return OperationStatus.Error;
+            }
+        }
+
+        // Método auxiliar para obtener el índice de una columna en la tabla
+        private int GetColumnIndex(string databaseName, string tableName, string columnName)
+        {
+            string columnsFilePath = Path.Combine(DatabaseBasePath, "SystemCatalog", "SystemColumns.table");
+
+            if (!File.Exists(columnsFilePath))
+            {
+                return -1;
+            }
+
+            var columnDefinitions = File.ReadAllLines(columnsFilePath);
+            for (int i = 0; i < columnDefinitions.Length; i++)
+            {
+                var columnData = columnDefinitions[i].Split('|');
+                if (columnData[0] == databaseName && columnData[1] == tableName && columnData[2].Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i; // Devuelve el índice de la columna en la tabla
+                }
+            }
+
+            return -1; // Retorna -1 si no se encuentra la columna
+        }
 
 
 

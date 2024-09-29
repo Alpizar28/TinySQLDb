@@ -15,6 +15,9 @@ namespace StoreDataManager.Interfaces
         string GetIndexInfo(string databaseName, string tableName, string columnName);
         OperationStatus DeleteRows(string databaseName, string tableName, string columnName, string value);
         OperationStatus DeleteAllRows(string databaseName, string tableName);
+        OperationStatus UpdateAllRows(string databaseName, string tableName, string columnName, string newValue);
+
+        OperationStatus UpdateRows(string databaseName, string tableName, string columnToUpdate, string newValue, string conditionColumn, string conditionValue);
 
     }
 }

@@ -225,5 +225,16 @@ namespace StoreDataManager
         {
             return _tableManager.DeleteAllRows(databaseName, tableName);
         }
+
+        //UPDATE
+        public OperationStatus UpdateAllRows(string databaseName, string tableName, string columnName, string newValue)
+        {
+            return _tableManager.UpdateAllRows(databaseName, tableName, columnName, newValue);
+        }
+
+        public OperationStatus UpdateRows(string databaseName, string tableName, string columnToUpdate, string newValue, string conditionColumn, string conditionValue)
+        {
+            return _tableManager.UpdateRows(databaseName, tableName, columnToUpdate, newValue, conditionColumn, conditionValue);
+        }
     }
 }
