@@ -232,6 +232,10 @@ namespace QueryProcessor.Operations
                 }
                 else if (dataType.ToUpper().StartsWith("VARCHAR"))
                 {
+                    if (selectedOperator.ToUpper() == "LIKE")
+                    {
+                        return cellValue.ToLower().Contains(value.ToLower().Replace("%", ""));
+                    }
                     return EvaluateComparison(cellValue, value, selectedOperator);
                 }
                 else

@@ -51,6 +51,7 @@ function Send-SQLCommand {
     param (
         [string]$command
     )
+
     $client = New-Object System.Net.Sockets.Socket([System.Net.Sockets.AddressFamily]::InterNetwork, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)
     $client.Connect($IP, $Port)
 
@@ -60,11 +61,16 @@ function Send-SQLCommand {
     }
 
     $jsonMessage = $requestObject | ConvertTo-Json -Compress
-    Send-Message -client $client -message $jsonMessage
-    $response = Receive-Message -client $client
+
+    # Medir el tiempo de ejecución de la consulta
+    $executionTime = Measure-Command {
+        Send-Message -client $client -message $jsonMessage
+        $response = Receive-Message -client $client
+    }
 
     Write-Host -ForegroundColor Green "Response received: $response"
-    
+    Write-Host -ForegroundColor Cyan "Tiempo de ejecución: $($executionTime.TotalSeconds) segundos."
+
     $responseObject = $response | ConvertFrom-Json
     if ($responseObject.ResponseBody -and $responseObject.ResponseBody -ne "") {
         $jsonObject = $responseObject.ResponseBody | ConvertFrom-Json
@@ -77,6 +83,7 @@ function Send-SQLCommand {
     $client.Close()
 }
 
+
 function Execute-MyQuery {
     param (
         [string]$QueryFile
@@ -86,7 +93,13 @@ function Execute-MyQuery {
     $scriptContent = Get-Content -Path $QueryFile -Raw
 
     Write-Host "Ejecutando script completo." -ForegroundColor Yellow
-    Send-SQLCommand -command $scriptContent
+
+    # Medir tiempo total de ejecución del script
+    $totalExecutionTime = Measure-Command {
+        Send-SQLCommand -command $scriptContent
+    }
+
+    Write-Host -ForegroundColor Cyan "Tiempo total de ejecución del script: $($totalExecutionTime.TotalSeconds) segundos."
 }
 
 # Ejecutar el archivo que contiene las sentencias SQL

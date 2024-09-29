@@ -13,8 +13,10 @@ INSERT INTO Empleados VALUES (1, 'Carlos', 'Sanchez', 'Gerente', '2010-05-20');
 INSERT INTO Empleados VALUES (2, 'Maria', 'Lopez', 'Asistente', '2015-07-15');
 INSERT INTO Empleados VALUES (3, 'Luis', 'Gomez', 'Ingeniero', '2012-09-01');
 
+CREATE INDEX idx_apellido ON Empleados(Apellido) OF TYPE BTREE;
+
 SELECT * FROM Empleados;
 
-DELETE FROM Empleados WHERE FechaIngreso = 2010-05-21;
+DELETE FROM Empleados WHERE FechaIngreso = 2010-05-20;
 
 SELECT * FROM Empleados;
